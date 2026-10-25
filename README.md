@@ -1,9 +1,9 @@
 # redmine_more_previews
 
 > [!IMPORTANT]
-> This repository is a Cure Code Corp. maintained fork focused on compatibility with current Redmine releases.
+> This repository is an independently maintained fork focused on compatibility with current Redmine releases.
 >
-> - Maintained fork: https://github.com/curecodejp/redmine_more_previews
+> - Forked from Cure Code Corp's public repository: https://github.com/curecodejp/redmine_more_previews
 > - Based on: https://github.com/JVsup/redmine_more_previews
 > - Original upstream: https://github.com/HugoHasenbein/redmine_more_previews
 > - License: GNU GPL v2.0 or later, inherited from the upstream project
@@ -19,11 +19,15 @@ Pull requests run automated smoke tests against Redmine 6.0.11 and 6.1.5 with Ru
 
 ## Libre converter sandbox
 
-> **Upgrade warning:** The hardened Libre converter is **Linux-only** and requires a
+> **Upgrade warning:** On Linux, the hardened Libre converter requires a
 > working `bubblewrap` (`/usr/bin/bwrap`) with unprivileged user, mount, PID,
 > network, IPC and UTS namespaces. It **does not fall back** to an unsandboxed
-> LibreOffice when isolation is unavailable. Windows Libre conversions are
-> unavailable until an equivalent OS-level sandbox is implemented.
+> LibreOffice when isolation is unavailable.
+>
+> **Fork-specific Windows behavior:** this repository contains a customized
+> Windows path that runs LibreOffice via `soffice.com` **without** bubblewrap
+> sandboxing. This is an intentional compatibility trade-off for Windows
+> environments and differs from the Linux hardened path.
 >
 > Install a distribution-packaged LibreOffice exposing `/usr/bin/soffice` and
 > `/usr/bin/env`, plus the `bwrap` package. This version does **not** support the
@@ -90,7 +94,7 @@ Currently, there exist the following plugins:
 
 ![Libre](doc/libre/logo.png "Libre")
 
-The hardened Libre 1.1.4 converter requires Linux, `/usr/bin/soffice`, `/usr/bin/bwrap` and permission to create unprivileged namespaces as the Redmine service user. See [Libre converter sandbox](#libre-converter-sandbox).
+The hardened Libre 1.1.4 converter on Linux requires `/usr/bin/soffice`, `/usr/bin/bwrap` and permission to create unprivileged namespaces as the Redmine service user. In this fork, Windows uses `soffice.com` without sandboxing for compatibility. See [Libre converter sandbox](#libre-converter-sandbox).
 
 Libre uses LibreOffice to do the conversion. Libre converts almost everything LibreOffice can convert:
 
@@ -266,7 +270,7 @@ Native speakers: please help to improve localizations
 **6.1.0**
  - Redmine 6.1 compatibility verified while retaining Redmine 6.0 support
  - compatibility, security hardening, and preview regression fixes
- - Plugin version set to 6.1.0 for the Cure Code maintained release
+ - Plugin version set to 6.1.0 for this maintained fork release
 
 **6.0.5**
  - Forked version
