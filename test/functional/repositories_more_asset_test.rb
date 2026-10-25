@@ -75,18 +75,18 @@ class RepositoriesMoreAssetTest < Redmine::ControllerTest
 
     get :more_preview, params: entry_params(format: 'html')
     assert_response :success
-    assert_match(/\Asandbox allow-downloads; /, response.headers['Content-Security-Policy'].to_s)
+    assert_match(/\Asandbox allow-same-origin allow-downloads; /, response.headers['Content-Security-Policy'].to_s)
     get :entry, params: entry_params
     assert_response :success
-    assert_select 'iframe[sandbox="allow-downloads"]'
+    assert_select 'iframe[sandbox="allow-same-origin allow-downloads"]'
 
     spoof = entry_params(path: repository_path_hash(['spoof.zip'])[:param])
     get :more_preview, params: spoof.merge(format: 'html')
     assert_response :success
-    assert_match(/\Asandbox; /, response.headers['Content-Security-Policy'].to_s)
+    assert_match(/\Asandbox allow-same-origin; /, response.headers['Content-Security-Policy'].to_s)
     get :entry, params: spoof
     assert_response :success
-    assert_select 'iframe[sandbox=""]'
+    assert_select 'iframe[sandbox="allow-same-origin"]'
   end
 
   # the bytes are read once and shared by the CSP decision and the conversion
@@ -95,7 +95,7 @@ class RepositoriesMoreAssetTest < Redmine::ControllerTest
     Repository::Filesystem.any_instance.expects(:cat).once.returns(bytes)
     get :more_preview, params: entry_params(format: 'html', reload: 1)
     assert_response :success
-    assert_match(/\Asandbox allow-downloads; /, response.headers['Content-Security-Policy'].to_s)
+    assert_match(/\Asandbox allow-same-origin allow-downloads; /, response.headers['Content-Security-Policy'].to_s)
     assert_includes response.body, 'file.txt'
   end
 

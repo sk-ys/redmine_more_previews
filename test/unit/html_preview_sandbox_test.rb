@@ -37,7 +37,7 @@ class HtmlPreviewSandboxTest < ActiveSupport::TestCase
     html = helper.more_previews_tag('/attachments/more_preview/1.html', 'preview.html', type: 'text/html').to_s
     assert_includes html, '<iframe'
     assert_not_includes html, '<object'
-    assert_equal '', sandbox_of(html)
+    assert_equal 'allow-same-origin', sandbox_of(html)
   end
 
 
@@ -58,7 +58,7 @@ class HtmlPreviewSandboxTest < ActiveSupport::TestCase
 
   def test_html_preview_iframe_allows_downloads_only_when_asked
     html = helper.more_previews_tag('/attachments/more_preview/1.html', 'preview.html', type: 'text/html', allow_downloads: true).to_s
-    assert_equal ['allow-downloads'], sandbox_of(html).to_s.split, 'sandbox must contain allow-downloads and nothing else'
+    assert_equal %w[allow-same-origin allow-downloads], sandbox_of(html).to_s.split, 'sandbox must keep same-origin auth and allow-downloads when requested'
     assert_not_includes html, 'allow_downloads', 'the option must not leak into the markup'
   end
 
@@ -88,14 +88,14 @@ class HtmlPreviewSandboxTest < ActiveSupport::TestCase
       tgz = build_tgz(File.join(dir, 'archive.tgz'), 'file.txt' => 'x')
       assert helper_module.preview_allows_downloads?(zip)
       assert helper_module.preview_allows_downloads?(tgz)
-      assert_match(/\Asandbox allow-downloads; default-src 'none'/, helper_module.html_preview_csp(zip))
+      assert_match(/\Asandbox allow-same-origin allow-downloads; default-src 'none'/, helper_module.html_preview_csp(zip))
     end
     assert_not helper_module.preview_allows_downloads?('page.html', :pathonly => true)
     assert_not helper_module.preview_allows_downloads?('notes.md', :pathonly => true)
     assert_not helper_module.preview_allows_downloads?(nil)
     assert_not helper_module.preview_allows_downloads?(''), 'blank file must not raise'
     assert_not helper_module.preview_allows_downloads?('/nonexistent/archive.zip'), 'unreadable file must fail closed'
-    assert_match(/\Asandbox; default-src 'none'/, helper_module.html_preview_csp('page.html', :pathonly => true))
+    assert_match(/\Asandbox allow-same-origin; default-src 'none'/, helper_module.html_preview_csp('page.html', :pathonly => true))
   end
 
   # the converter is chosen by content first (Converter.mime), so the decision
@@ -111,7 +111,7 @@ class HtmlPreviewSandboxTest < ActiveSupport::TestCase
       spoofed = File.join(dir, 'archive.zip')
       File.write(spoofed, html)
       assert_not helper_module.preview_allows_downloads?(spoofed)
-      assert_match(/\Asandbox; /, helper_module.html_preview_csp(spoofed))
+      assert_match(/\Asandbox allow-same-origin; /, helper_module.html_preview_csp(spoofed))
       assert helper_module.preview_allows_downloads?(build_zip(File.join(dir, 'real.zip'), 'file.txt' => 'x'))
     end
     # repository entries are not on disk: the same decision from the bytes

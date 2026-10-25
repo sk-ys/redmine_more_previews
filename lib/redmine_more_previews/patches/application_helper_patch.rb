@@ -228,13 +228,18 @@ module RedmineMorePreviews
               }.merge(options.except(:allow_downloads))
 
               # HTML previews are sandboxed (GHSA-j23w-wwfh-gwfp): no scripts, forms,
-              # top navigation or same-origin access. Only previews whose HTML the
-              # plugin generates itself (Zippy's archive listing) get allow-downloads,
-              # so their links can start a download; see
+              # or top navigation. We still allow same-origin for authenticated asset
+              # requests issued from within the preview iframe; without it the browser
+              # treats the sandboxed document as a unique origin and drops the user's
+              # session cookies, so the iframe is redirected to login. Only previews
+              # whose HTML the plugin generates itself (Zippy's archive listing) get
+              # allow-downloads, so their links can start a download; see
               # ControllerHelper::DOWNLOAD_PREVIEW_CONVERTERS, which also drives the
               # response's CSP sandbox directive (the browser applies both).
               if html_preview
-                iframe_options[:sandbox] = options[:allow_downloads] ? "allow-downloads" : ""
+                flags = ['allow-same-origin']
+                flags << 'allow-downloads' if options[:allow_downloads]
+                iframe_options[:sandbox] = flags.join(' ')
               end
 
               content_tag(:div,

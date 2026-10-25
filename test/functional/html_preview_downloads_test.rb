@@ -56,11 +56,11 @@ class HtmlPreviewDownloadsTest < Redmine::ControllerTest
       a = attach(build_zip(File.join(dir, 'a.zip'), 'dir/' => '', 'dir/file.txt' => 'x'), 'application/zip')
       get :more_preview, params: {id: a.id, format: 'html'}
       assert_response :success
-      assert_match(/\Asandbox allow-downloads; /, csp)
-      assert_no_match(/allow-(scripts|forms|same-origin|top-navigation|popups)/, csp)
+      assert_match(/\Asandbox allow-same-origin allow-downloads; /, csp)
+      assert_no_match(/allow-(scripts|forms|top-navigation|popups)/, csp)
       assert_includes csp, "style-src 'self' 'unsafe-inline'", 'same-origin CSS stays allowed (#19139)'
       get :show, params: {id: a.id, filename: a.filename, format: 'html'}
-      assert_select 'iframe[sandbox="allow-downloads"]'
+      assert_select 'iframe[sandbox="allow-same-origin allow-downloads"]'
     end
   end
 
@@ -75,9 +75,9 @@ class HtmlPreviewDownloadsTest < Redmine::ControllerTest
       assert_equal 'pass', RedmineMorePreviews::Converter.responsible(a.diskfile).id.to_s
       get :more_preview, params: {id: a.id, format: 'html'}
       assert_response :success
-      assert_match(/\Asandbox; /, csp)
+      assert_match(/\Asandbox allow-same-origin; /, csp)
       get :show, params: {id: a.id, filename: a.filename, format: 'html'}
-      assert_select 'iframe[sandbox=""]'
+      assert_select 'iframe[sandbox="allow-same-origin"]'
     end
   end
 
@@ -92,7 +92,7 @@ class HtmlPreviewDownloadsTest < Redmine::ControllerTest
       a = attach(path, 'application/zip')
       get :more_preview, params: {id: a.id, format: 'html'}
       assert_response :success
-      assert_match(/\Asandbox; /, csp)
+      assert_match(/\Asandbox allow-same-origin; /, csp)
       assert_includes response.body, refresh, 'Pass caches the uploaded HTML'
 
       etag = response.headers['ETag']
@@ -164,9 +164,9 @@ class HtmlPreviewDownloadsTest < Redmine::ControllerTest
       assert a.preview_convertible?, 'pass converter must handle .html for this test'
       get :more_preview, params: {id: a.id, format: 'html'}
       assert_response :success
-      assert_match(/\Asandbox; /, csp)
+      assert_match(/\Asandbox allow-same-origin; /, csp)
       get :show, params: {id: a.id, filename: a.filename, format: 'html'}
-      assert_select 'iframe[sandbox=""]'
+      assert_select 'iframe[sandbox="allow-same-origin"]'
     end
   end
 end
