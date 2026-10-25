@@ -67,12 +67,19 @@ class LibreCommandTest < ActiveSupport::TestCase
     refute args.include?('/home')
   end
 
-  def test_rejects_windows_and_unknown_formats
+  def test_windows_uses_soffice_com_without_sandbox
     @worker.preview_format = 'pdf'
     Redmine::Platform.stubs(:mswin?).returns(true)
-    assert_raises(RedmineMorePreviews::Exceptions::ConverterShellError) do
-      sandbox_args
-    end
+    args = sandbox_args('C:/tmp/input.docx', 'C:/tmp/profile/user_installation')
+    assert_equal Libre::LIBRE_OFFICE_BIN_WINDOWS, args.first
+    refute_includes args, Libre::BWRAP_BIN
+    assert_equal 'pdf', args[args.index('--convert-to') + 1]
+    assert_equal @worker.tmpdir, args[args.index('--outdir') + 1]
+    assert_equal 'C:/tmp/input.docx', args.last
+  end
+
+  def test_rejects_unknown_formats
+    @worker.preview_format = 'pdf'
     Redmine::Platform.stubs(:mswin?).returns(false)
     ['inline', 'xml', '', 'pdf;touch /tmp/unwanted', 'pdf$(id)', "pdf\nwhoami"].each do |format|
       @worker.preview_format = format
@@ -133,8 +140,15 @@ class LibreCommandTest < ActiveSupport::TestCase
   end
 
   def test_status_delegates_to_actual_namespace_probe
+    Redmine::Platform.stubs(:mswin?).returns(false)
     @worker.expects(:sandbox_available?).returns(false)
     assert_equal [:text_libre_office_available, false], @worker.status
+  end
+
+  def test_status_checks_soffice_com_on_windows
+    Redmine::Platform.stubs(:mswin?).returns(true)
+    @worker.expects(:run).with([Libre::LIBRE_OFFICE_BIN_WINDOWS, '--version']).returns(['', '', 0])
+    assert_equal [:text_libre_office_available, true], @worker.status
   end
 
   def test_unsafe_libre_output_entries_are_rejected

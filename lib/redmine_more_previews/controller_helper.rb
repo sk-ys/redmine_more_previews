@@ -24,12 +24,13 @@
 module RedmineMorePreviews
   module ControllerHelper
 
-    # Keep full HTML previews in an opaque-origin sandbox, while allowing the
-    # preview document to load Redmine/plugin CSS and images from the same
-    # response origin. CSP 'self' is matched against the protected response
-    # URL's origin; it does not require sandbox allow-same-origin.
+    # Keep full HTML previews sandboxed (no scripts/forms/navigation), while
+    # preserving same-origin so asset requests keep the signed-in session.
+    # Without allow-same-origin in BOTH CSP and the iframe attribute, browsers
+    # treat the document as opaque-origin and image/css asset requests can fall
+    # back to anonymous.
     HTML_PREVIEW_CSP =
-      "sandbox; default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:".freeze
+      "sandbox allow-same-origin; default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:".freeze
 
     # Converters whose HTML preview may start downloads: the plugin generates that
     # HTML itself (Zippy's archive listing, entry names escaped). Converters that
@@ -55,7 +56,7 @@ module RedmineMorePreviews
 
     def self.html_preview_csp(file, options = {})
       return HTML_PREVIEW_CSP unless preview_allows_downloads?(file, options)
-      HTML_PREVIEW_CSP.sub(/\Asandbox;/, 'sandbox allow-downloads;')
+      HTML_PREVIEW_CSP.sub(/\Asandbox allow-same-origin;/, 'sandbox allow-same-origin allow-downloads;')
     end
 
     # only these media types may be served inline as assets; everything else

@@ -24,6 +24,7 @@ require 'timeout'
 
 class Libre < RedmineMorePreviews::Conversion
   LIBRE_OFFICE_BIN = '/usr/bin/soffice'.freeze
+  LIBRE_OFFICE_BIN_WINDOWS = 'soffice.com'.freeze
   BWRAP_BIN = '/usr/bin/bwrap'.freeze
   ENV_BIN = '/usr/bin/env'.freeze
   ALLOWED_OUTPUT_FORMATS = %w(html txt pdf png jpg).freeze
@@ -31,11 +32,16 @@ class Libre < RedmineMorePreviews::Conversion
   # A missing or unusable sandbox must never fall back to host soffice.
   # This profile supports system-packaged /usr/bin/soffice on Linux.
   def status
+    if Redmine::Platform.mswin?
+      s = run [LIBRE_OFFICE_BIN_WINDOWS, '--version']
+      return [:text_libre_office_available, s[2] == 0]
+    end
+
     [:text_libre_office_available, sandbox_available?]
   end
 
   def convert
-    raise ConverterShellError, 'LibreOffice sandbox unavailable' unless sandbox_available?
+    raise ConverterShellError, 'LibreOffice sandbox unavailable' unless Redmine::Platform.mswin? || sandbox_available?
 
     Dir.mktmpdir do |tdir|
       user_installation = File.join(tdir, 'user_installation')
@@ -102,7 +108,13 @@ class Libre < RedmineMorePreviews::Conversion
       raise ConverterBadArgument, 'Unsupported LibreOffice output format'
     end
     if Redmine::Platform.mswin?
-      raise ConverterShellError, 'LibreOffice sandbox is not supported on Windows'
+      return [
+        LIBRE_OFFICE_BIN_WINDOWS,
+        '--headless',
+        '--convert-to', output_format,
+        '--outdir', tmpdir,
+        src
+      ].map { |arg| shell_quote(arg) }.join(' ')
     end
 
     # Redmine stores attachments under absolute paths. Bind only this single
@@ -179,14 +191,17 @@ class Libre < RedmineMorePreviews::Conversion
   end
 
   def fix_image_path
-    filepath = Dir[tmpdir + '/*.html'][0]
+    filepath = Dir[File.join(tmpdir, '*.html')].first
     return if filepath.nil?
-    basefilename = filepath.split('/')[-1].split('.')[0]
-    return if basefilename.ascii_only?
-    if File.exist?(filepath)
-      text = File.read(filepath)
-      new_contents = text.gsub(/(?<=img src=")([A-Za-z%\d_]+)(?=_html)/, URI::encode_www_form_component(basefilename))
-      File.open(filepath, 'w') { |file| file.puts new_contents }
+    return unless File.exist?(filepath)
+
+    text = File.read(filepath)
+    new_contents = text.gsub(/(?<=img src=")([^"]+)(?=")/) do |src|
+      next src if src.blank? || src.start_with?('data:', 'http://', 'https://', '//', '/', '?')
+      asset = src.sub(%r{\A\./}, '').split('?', 2).first.split('#', 2).first
+      next src if asset.blank? || asset == '.' || asset == '..'
+      "?asset=#{URI.encode_www_form_component(asset)}"
     end
+    File.open(filepath, 'w') { |file| file.write(new_contents) }
   end
 end

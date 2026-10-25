@@ -3,11 +3,10 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class HtmlPreviewCspTest < ActiveSupport::TestCase
-  def test_html_preview_response_allows_same_origin_styles_and_images_without_restoring_same_origin
+  def test_html_preview_response_keeps_same_origin_for_authenticated_assets
     csp = headers_for('html')['Content-Security-Policy'].to_s
 
-    assert_includes csp, 'sandbox;'
-    assert_not_includes csp, 'allow-same-origin'
+    assert_includes csp, 'sandbox allow-same-origin;'
     assert_includes csp, "default-src 'none'"
     assert_includes csp, "style-src 'self' 'unsafe-inline'"
     assert_includes csp, "img-src 'self' data:"
@@ -67,7 +66,7 @@ class HtmlPreviewCspTest < ActiveSupport::TestCase
     end
 
     assert_equal html_csp, xml_csp
-    assert_includes html_csp, 'sandbox allow-downloads;'
+    assert_includes html_csp, 'sandbox allow-same-origin allow-downloads;'
   end
 
   private
